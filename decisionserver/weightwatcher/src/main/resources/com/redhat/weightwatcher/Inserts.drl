@@ -1,0 +1,178 @@
+package com.redhat.weightwatcher;
+
+import org.json.JSONObject;
+import java.util.Date; 
+import java.text.SimpleDateFormat;
+
+function void print(String txt) {
+   System.out.println(txt);
+}
+
+rule "ruleInsertParticipant"
+   salience 10000
+   no-loop true
+   dialect "mvel"
+when
+    fact : Fact( factname == "Participant" )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson( ).toString( ) );
+    
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString( ) ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString( ) ) );
+    String username = new String( factjson.get("username").toString( )  );
+
+    Participant participant = new Participant( programid, userid, username );
+    insert( participant );
+
+    System.out.println("==> Nudge " + drools.getRule( ).getName( ) + "->" + 
+		participant.getProgramid() + "~" + participant.getUserid( )  + "~" + participant.getUsername( ) );
+
+end
+
+
+rule "ruleInsertGoal"
+	salience 10000
+	no-loop true
+    dialect "mvel"
+when
+    fact : Fact( factname == "Goal" )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson( ).toString( ) );
+
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString( ) ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString( ) ) );
+    String goalname = new String( factjson.get("goalname").toString( )  );
+    Integer target = new Integer( Integer.parseInt( factjson.get("target").toString( ) ) );
+    Integer start = new Integer( Integer.parseInt( factjson.get("start").toString( ) ) );
+    Integer low = new Integer( Integer.parseInt( factjson.get("low").toString( ) ) );
+    Integer high = new Integer( Integer.parseInt( factjson.get("high").toString( ) ) );
+
+    Goal goal = new Goal( programid, userid, goalname, target, start, low, high );
+    insert( goal );
+
+    System.out.println("==> Nudge " + drools.getRule( ).getName( ) + "->" + 
+		goal.getProgramid() + "~" + goal.getUserid( )  + "~" + goal.getGoalname( ) );
+end
+
+
+rule "ruleInsertGAS"
+	salience 10000
+	no-loop true
+    dialect "mvel"
+when
+    fact : Fact( factname == "GAS" )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson( ).toString( ) );
+
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString( ) ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString( ) ) );
+    String goalname = new String( factjson.get("goalname").toString( )  );
+    Integer besthi = new Integer( Integer.parseInt( factjson.get( "besthi" ).toString( ) ) );
+    Integer bestlo = new Integer( Integer.parseInt( factjson.get( "bestlo" ).toString( ) ) );
+    Integer morehi = new Integer( Integer.parseInt( factjson.get( "morehi" ).toString( ) ) );
+    Integer morelo = new Integer( Integer.parseInt( factjson.get( "morelo" ).toString( ) ) );
+    Integer exphi = new Integer( Integer.parseInt( factjson.get( "exphi" ).toString( ) ) );
+    Integer explo = new Integer( Integer.parseInt( factjson.get( "explo" ).toString( ) ) );
+    Integer lesshi = new Integer( Integer.parseInt( factjson.get( "lesshi" ).toString( ) ) );
+    Integer lesslo = new Integer( Integer.parseInt( factjson.get( "lesslo" ).toString( ) ) );
+    Integer worsthi = new Integer( Integer.parseInt( factjson.get( "worsthi" ).toString( ) ) );
+    Integer worstlo = new Integer( Integer.parseInt( factjson.get( "worstlo" ).toString( ) ) );
+
+    GAS gas = new GAS( programid, userid, goalname, besthi, bestlo, morehi, morelo, exphi, explo, lesshi, lesslo, worsthi, worstlo );
+    insert( gas );
+
+    System.out.println("==> Nudge " + drools.getRule( ).getName( ) + "->" + 
+	    gas.getProgramid() + "~" + gas.getUserid( )  + "~" + gas.getGoalname( ) );
+end
+
+
+rule "ruleInsertGoalScore"
+	salience 5000
+	no-loop true
+    dialect "mvel"
+when
+    fact : Fact( factname == "GoalScore" )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson( ).toString( ) );
+
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString( ) ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString() ) );
+    String goalname = new String( factjson.get("goalname").toString() );
+	Integer score = new Integer( Integer.parseInt( factjson.get("score").toString() ) );
+	Integer low = new Integer( Integer.parseInt( factjson.get("low").toString() ) );
+	Integer high = new Integer( Integer.parseInt( factjson.get("high").toString() ) );
+
+    GoalScore goalscore = new GoalScore( programid, userid, goalname, score, high, low );
+    insert( goalscore );
+
+    System.out.println("==> Nudge " + drools.getRule( ).getName( ) + "->" + 
+        goalscore.getProgramid() + "~" + goalscore.getUserid( )  + "~" + goalscore.getGoalname( ) + "~" + goalscore.getScore( ) );
+end
+
+rule "ruleInsertOptInOut"
+   salience 20000
+   no-loop true
+   dialect "mvel"
+when
+    fact : Fact( factname == "OptInOut" )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson().toString() );
+    
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString() ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString() ) );
+    String rulename = new String( factjson.get("rulename").toString()  );
+    String inorout = new String( factjson.get("inorout").toString()  );
+    String groupname = new String( factjson.get("groupname").toString()  );
+        
+    OptInOut optinout = new OptInOut( programid, userid, rulename, inorout, groupname );
+    insert( optinout );
+
+    System.out.println("==> Nudge " + drools.getRule().getName() + "->" + 
+	    optinout.getProgramid() + "~" + optinout.getUserid()  + "~" + optinout.getGroupname() + "~" + optinout.getRulename() );
+
+end
+
+
+rule "ruleInsertObservation"
+	salience 1000
+	no-loop true
+    dialect "mvel"
+when
+    fact : Fact( factname == "Observation" )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson( ).toString( ) );
+
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString( ) ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString( ) ) );
+    SimpleDateFormat factSDF = new SimpleDateFormat("yyyy-M-d HH:mm:ss zzz");
+    Date obsdate = factSDF.parse( factjson.get("obsdate").toString() );
+	Integer obsvalue = new Integer( Integer.parseInt( factjson.get("obsvalue").toString( ) ) );
+    String obsname = factjson.get( "obsname" ).toString( );
+
+    Observation observation = new Observation( programid, userid, obsdate, obsvalue, obsname );
+    insert( observation );
+
+    System.out.println("==> Nudge " + drools.getRule( ).getName( ) + "->" + 
+	    observation.getProgramid() + "~" + observation.getUserid( )  + "~" + observation.getObsname( ) + "~" + observation.getObsdate( ) + "~" + observation.getObsvalue( ) );
+end
+
+rule "ruleInsertUserFact"
+	salience -5000
+	no-loop true
+    dialect "mvel"
+when
+    fact : Fact( facttype == 0 )
+then
+    JSONObject factjson = new JSONObject( fact.getFactjson( ).toString( ) );
+
+    Integer programid = new Integer( Integer.parseInt( factjson.get("programid").toString( ) ) );
+    Integer userid = new Integer( Integer.parseInt( factjson.get("userid").toString() ) );
+    String factname = new String( fact.getFactname() );
+    String facttxt = new String( fact.getFacttxt() );
+    
+    UserFact userfact = new UserFact( programid, userid, factname, facttxt );
+    insert( userfact );
+
+    System.out.println("==> Nudge " + drools.getRule().getName() + "->" + 
+        userfact.getProgramid() + "~" + userfact.getUserid()  + "~" + userfact.getFactname() );
+end

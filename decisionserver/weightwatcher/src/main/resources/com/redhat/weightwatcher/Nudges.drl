@@ -1,0 +1,37 @@
+package com.redhat.weightwatcher;
+
+import org.json.JSONObject;
+import java.util.Date; 
+import java.text.SimpleDateFormat;
+
+global java.util.HashMap output;
+global SimpleDateFormat inSDF;
+global SimpleDateFormat outSDF;
+
+rule "ruleNudgeMsg"
+  	salience -10000
+  	no-loop true
+    dialect "mvel"
+when
+    $participant : Participant(  )
+    $userfact : UserFact ( 
+	    programid == $participant.programid,
+        userid == $participant.userid )
+    $optinout : OptInOut ( 
+        userid == $participant.userid,
+        groupname == "NudgeMsg",
+        programid == $userfact.programid,
+        rulename == $userfact.factname, 
+        inorout == "in" )
+then
+	String rulename = new String( drools.getRule().getName() );
+	Integer programid = $userfact.getProgramid();
+	Integer userid = $userfact.getUserid();
+	String msgname = new String( $userfact.getFactname() );
+	String msgtxt = new String( $userfact.getFacttxt() );
+
+	Msg $msg = new Msg( programid, userid, msgname, msgtxt );
+	insert( $msg );
+
+   	System.out.println( "==> Nudge " + rulename + "->" + programid + "~" + userid + '~' + msgname );
+end

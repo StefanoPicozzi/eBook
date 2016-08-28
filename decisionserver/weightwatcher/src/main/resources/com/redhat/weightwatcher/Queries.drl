@@ -1,0 +1,86 @@
+package com.redhat.weightwatcher;
+
+query "getFact"
+    fact : Fact( )
+end
+
+query "getFactout"
+    fact : Fact( facttype == 0 )
+end
+
+query "getFactin"
+    fact : Fact( facttype == 1 )
+end
+
+query "getWatch"
+	fact : Fact( factname == "Watch" );
+end
+
+query "getFactByLabel" (String label)
+	fact : Fact( factname == label );
+end
+
+query "getGAS"
+	gas : GAS( )
+end
+
+query "getGoal"
+	goal : Goal( )
+end
+
+query "getGoalScore"
+	goalscore : GoalScore( )
+end
+
+query "getObservation"
+	observation : Observation( )
+end
+
+query "getOptInOut"
+	optinout : OptInOut( )
+end
+
+query "getParticipant"
+	participant : Participant( )
+end
+
+query "getUserFact"
+    userfact : UserFact( )
+end
+
+query "getMsg"
+    msg : Msg( )
+end
+
+query "getOptInOutByUserid" (Integer userid)
+	optinout : OptInOut( userid == userid )
+end
+
+query "getGASByUserid" (Integer userid)
+	gas : GAS( userid == userid )
+end
+
+query "getGoalByUserid" (Integer userid)
+	goal : Goal( userid == userid )
+end
+
+query "getGoalScoreByUserid" (Integer userid)
+	goalscore : GoalScore( userid == userid )
+end
+
+query "getParticipantByUserid" ( Integer userid)
+	participant : Participant( userid == userid )
+end
+
+query "getObservationByUserid" (Integer userid)
+	observation : Observation( userid == userid )
+end
+
+query "getMsgByUserid" ( Integer userid)
+	msg : Msg( userid == userid )
+end
+
+query "getUserFactByUserid" ( Integer userid)
+	userfact : UserFact( userid == userid )
+end
+

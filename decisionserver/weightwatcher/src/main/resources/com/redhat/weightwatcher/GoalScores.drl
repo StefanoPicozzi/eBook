@@ -1,0 +1,307 @@
+package com.redhat.weightwatcher;
+
+import org.json.JSONObject;
+import java.util.Date; 
+import java.text.SimpleDateFormat;
+ 
+import com.redhat.weightwatcher.Observation;
+import com.redhat.weightwatcher.GAS;
+
+global java.util.HashMap output;
+global SimpleDateFormat inSDF;
+global SimpleDateFormat outSDF;
+
+rule "ruleGoalScore"
+  	salience -1000
+  	no-loop true
+    dialect "mvel"
+when
+    $participant : Participant(  )
+    $observation : Observation ( userid == $participant.userid )
+    $optinout : OptInOut ( 
+        userid == $participant.userid,
+        programid == $observation.programid,
+        groupname == "GoalScore",
+        rulename == "ruleGoalScore",
+        inorout == "in" )
+	$goalscore : GoalScore( 
+	    userid == $participant.userid, 
+        programid == $observation.programid,	    
+	    goalname == $observation.obsname, 
+	    low <= $observation.obsvalue, 
+	    high >= $observation.obsvalue )
+then
+	String rulename = new String( drools.getRule().getName() );
+	Integer programid = $participant.getProgramid();	
+	Integer userid = $participant.getUserid();
+	Integer score = $goalscore.getScore();
+	String goalname = new String( $goalscore.getGoalname() );
+	String obsdate = new String( $observation.getObsdate().toString() );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername() );
+	String facttxt = new String( "Nudge says that for " + goalname + ", " + username + " attained a score of " + 
+		score  + " on " + obsdate);
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put( "programid", programid );
+	factjson.put( "userid", userid );
+	factjson.put( "goalname", goalname );
+	factjson.put( "obsdate", obsdate );
+	factjson.put( "score", score );
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+   	System.out.println( "==> Nudge " + rulename + "->" + programid + "~" + userid + '~' + goalname + '~' + obsdate + '~' + score );
+end
+
+rule "ruleBestGASCount"
+  	salience -100
+  	no-loop true
+        dialect "mvel"
+when
+    $participant : Participant(  )
+	$gas : GAS(
+	    programid == $participant.programid,
+	    userid == $participant.userid )
+    $obscounttotal : Number( intValue > 0) from accumulate(
+      	Observation( $obscount : 
+      	    obsvalue >= $gas.bestlo, 
+      	    obsvalue <= $gas.besthi, 
+      	    userid == $gas.userid,
+      	    programid == $gas.programid,
+      	    obsname == $gas.goalname ) over window:time( 30d ),
+     	count( $obscount ) )
+then
+    Date today = new Date();
+
+    java.util.Date date = new Date();
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String datef = sdf.format( date );
+
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid();
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that for " + $gas.getGoalname( ) + ", " + username + " attained best outcome " + 
+		$obscounttotal  + " times over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obscounttotal);
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+   	System.out.println( "==> Nudge " + rulename + ":" + $obscounttotal );
+end
+
+rule "ruleMoreGASCount"
+  	salience -100
+  	no-loop true
+        dialect "mvel"
+when
+    $participant : Participant(  )
+	$gas : GAS(
+  	    programid == $participant.programid,
+	    userid == $participant.userid )
+    $obscounttotal : Number( intValue > 0) from accumulate(
+      	Observation( $obscount : 
+      	    obsvalue >= $gas.morelo, 
+      	    obsvalue <= $gas.morehi, 
+      	    userid == $gas.userid, 
+      	    programid == $gas.programid,
+      	    obsname == $gas.goalname ) over window:time( 30d ),
+     	count( $obscount ) )
+then
+	Date today = new Date();
+
+    java.util.Date date = new Date();
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String datef = sdf.format( date );
+
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid();
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that for " + $gas.getGoalname( ) + ", " + username + " attained more than expected outcome " + 
+		$obscounttotal  + " times over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obscounttotal);
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+   	System.out.println( "==> Nudge " + rulename + ":" + $obscounttotal );
+end
+
+rule "ruleExpectedGASCount"
+  	salience -100
+  	no-loop true
+        dialect "mvel"
+when
+    $participant : Participant(  )
+	$gas : GAS( 
+  	    programid == $participant.programid,
+	    userid == $participant.userid )
+    $obscounttotal : Number( intValue > 0) from accumulate(
+      	Observation( $obscount : 
+      	    obsvalue >= $gas.explo, 
+      	    obsvalue <= $gas.exphi,   	   
+      	    programid == $gas.programid,
+      	    userid == $gas.userid,
+      	    obsname == $gas.goalname ) over window:time( 30d ),
+     	count( $obscount ) )
+then
+	Date today = new Date();
+
+    java.util.Date date = new Date();
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String datef = sdf.format( date );
+
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid();
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that for " + $gas.getGoalname( ) + ", " + username + " attained expected outcome " + 
+		$obscounttotal  + " times over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obscounttotal);
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+   	System.out.println( "==> Nudge " + rulename + ":" + $obscounttotal );
+end
+
+rule "ruleLessGASCount"
+  	salience -100
+  	no-loop true
+        dialect "mvel"
+when
+    $participant : Participant(  )
+	$gas : GAS( 
+	    programid == $participant.programid,
+	    userid == $participant.userid )
+    $obscounttotal : Number( intValue > 0) from accumulate(
+      	Observation( $obscount : 
+      	    obsvalue >= $gas.lesslo, 
+      	    obsvalue <= $gas.lesshi,
+      	    programid == $gas.programid,
+      	    userid == $gas.userid, 
+      	    obsname == $gas.goalname ) over window:time( 30d ),
+     	count( $obscount ) )
+then
+	Date today = new Date();
+
+    java.util.Date date = new Date();
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String datef = sdf.format( date );
+
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid();
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that for " + $gas.getGoalname( ) + ", " + username + " attained less than expected outcome " + 
+		$obscounttotal  + " times over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obscounttotal);
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+   	System.out.println( "==> Nudge " + rulename + ":" + $obscounttotal );
+end
+
+rule "ruleWorstGASCount"
+  	salience -100
+  	no-loop true
+        dialect "mvel"
+when
+    $participant : Participant(  )
+	$gas : GAS( 
+	    programid == $participant.programid,
+	    userid == $participant.userid )
+    $obscounttotal : Number( intValue > 0) from accumulate(
+      	Observation( $obscount : 
+      	    obsvalue >= $gas.worstlo, 
+      	    obsvalue <= $gas.worsthi,
+      	    programid == $gas.programid,
+      	    userid == $gas.userid, 
+      	    obsname == $gas.goalname ) over window:time( 30d ),
+     	count( $obscount ) )
+then
+	Date today = new Date();
+
+    java.util.Date date = new Date();
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String datef = sdf.format( date );
+
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid();
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that for " + $gas.getGoalname( ) + ", " + username + " attained worst expected outcome " + 
+		$obscounttotal  + " times over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obscounttotal);
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+   	System.out.println( "==> Nudge " + rulename + ":" + $obscounttotal );
+end

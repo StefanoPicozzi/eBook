@@ -1,0 +1,154 @@
+package com.redhat.weightwatcher;
+
+import org.json.JSONObject;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+rule "ruleAverageObs"
+  salience -1000
+  no-loop true
+  dialect "mvel"
+when
+  $participant : Participant()
+  $goal : Goal( 
+	  programid == $participant.programid,
+      userid == $participant.userid )
+  $obsvalueaverage : Number( doubleValue > 0 ) from accumulate(
+    Observation( $obsvalue : obsvalue > 0, 
+        $participant.userid == userid,
+        $goal.programid == programid,
+        $goal.userid == userid,
+        $goal.goalname == obsname ) over window:time( 7d ),
+   	average( $obsvalue ) )
+then
+	Date today = new Date( );
+    java.util.Date date = new Date( );
+    SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-M-d HH:mm:ss zzz" );
+    String datef = sdf.format( date );
+
+    String goalname = new String( $goal.getGoalname() );
+	String rulename= new String( drools.getRule().getName() );
+	Integer programid = $participant.getProgramid( );	
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername() );
+	String facttxt = new String( "Nudge says that " + username + " " + goalname + " averaged " +
+	    String.format( "%.2f", $obsvalueaverage ) + " over the past 7 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obsvalueaverage);
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+    System.out.println( "==> Nudge " + rulename + "~" + $goal.getGoalname() + "~" + $participant.getProgramid() + "~" + $participant.getUserid() + "~" + $obsvalueaverage );
+end
+
+rule "ruleHighObs"
+  salience -1000
+  no-loop true
+  dialect "mvel"
+when
+  $participant : Participant()
+  $goal : Goal ( 
+	  programid == $participant.programid,
+      userid == $participant.userid )
+  $obsvaluehigh : Number( doubleValue > 0 ) from accumulate(
+    Observation( $obsvalue : obsvalue > 0, 
+        $participant.userid == userid,
+        $goal.programid == programid,
+        $goal.userid == userid,
+        $goal.goalname == obsname ) over window:time( 30d ),
+    max( $obsvalue ) )
+then
+	Date today = new Date( );
+    java.util.Date date = new Date( );
+    SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-M-d HH:mm:ss zzz" );
+    String datef = sdf.format( date );
+
+    String goalname = new String( $goal.getGoalname() );
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid( );	
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that " + username + " " + goalname + " maximum was " +
+	    String.format( "%.2f", $obsvaluehigh ) + " over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obsvaluehigh );
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 0 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+    System.out.println( "==> Nudge " + rulename + "~" + $goal.getGoalname() + "~" + $participant.getProgramid() + "~" + $participant.getUserid() + "~" + $obsvaluehigh );
+end
+
+/**
+  rule "ruleLowObs"
+  salience -1000
+  dialect "mvel"
+  no-loop true
+when
+  $participant : Participant()
+  $goal : Goal (
+	programid == $participant.programid,
+    userid == $participant.userid )
+  $obsvaluelow : Number( doubleValue > 0 ) from accumulate(
+    Observation( $obsvalue : obsvalue > 0, 
+        $participant.userid == userid,
+        $goal.programid == programid,        
+        $goal.userid == userid,
+        $goal.goalname == obsname ) over window:time( 30d ),
+    min( $obsvalue ) )
+then
+	Date today = new Date( );
+    java.util.Date date = new Date( );
+    SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-M-d HH:mm:ss zzz" );
+    String datef = sdf.format( date );
+
+    String goalname = new String( $goal.getGoalname() );
+	String rulename= new String( drools.getRule().getName( ) );
+	Integer programid = $participant.getProgramid( );
+	Integer userid = $participant.getUserid( );
+	String factname = new String( rulename );
+	String username = new String( $participant.getUsername( ) );
+	String facttxt = new String( "Nudge says that " + username + " " + goalname + " minimum was " +
+	    String.format( "%.2f", $obsvaluelow ) + " over the past 30 days" );
+
+	JSONObject factjson = new JSONObject( );
+	factjson.put("programid", programid);
+	factjson.put("userid", userid);
+	factjson.put("obsvalue", $obsvaluelow );
+	factjson.put("facttxt", rulename);
+
+	Fact $fact = new Fact( );
+	$fact.setFactid( 999 );
+	$fact.setFacttype ( 2 );
+	$fact.setFactname( factname );
+	$fact.setFacttxt( facttxt );
+	$fact.setFactjson( factjson.toString( ) );
+	insert( $fact );
+
+    System.out.println( "==> Nudge " + rulename + "~" + $goal.getGoalname() + "~" + $participant.getProgramid() + "~" + $participant.getUserid() + "~" + $obsvaluelow );
+end
+**/
+
+
+
